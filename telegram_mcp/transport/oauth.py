@@ -100,11 +100,17 @@ def wrap_app(inner: Starlette, provider: Any) -> Starlette:
     resource_url = provider._get_resource_url(MCP_PATH)
     resource_metadata_url = build_resource_metadata_url(resource_url) if resource_url else None
 
+    # Upstream wraps its Starlette app in ASGI middleware (ProtocolNegotiationMiddleware);
+    # the lifespan lives on the Starlette app underneath.
+    starlette_app = inner
+    while not isinstance(starlette_app, Starlette):
+        starlette_app = starlette_app.app
+
     @asynccontextmanager
     async def lifespan(app: Starlette):
         # Mount does not forward lifespan events; upstream's app starts its session
         # manager in its own lifespan.
-        async with inner.router.lifespan_context(inner):
+        async with starlette_app.router.lifespan_context(starlette_app):
             yield
 
     routes = [
