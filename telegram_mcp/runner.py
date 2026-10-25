@@ -19,6 +19,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 from telegram_mcp import runtime as _runtime
 from telegram_mcp import transcription as _transcription
+from telegram_mcp.transport import oauth as _oauth
 from telegram_mcp.runtime import *
 from telegram_mcp.singleton import (
     DEFAULT_GRACE_SECONDS,
@@ -219,7 +220,9 @@ async def _serve(transport: str) -> None:
         mcp.settings.host = os.getenv("MCP_HOST", "127.0.0.1")
         mcp.settings.port = int(os.getenv("MCP_PORT", "8765"))
         _configure_transport_security()
-        if transport == "http":
+        if transport == "http" and _oauth.auth_mode() == "oidc":
+            await _oauth.run_streamable_http_oidc(mcp)
+        elif transport == "http":
             await mcp.run_streamable_http_async()
         else:
             await mcp.run_sse_async()
@@ -359,6 +362,7 @@ def main() -> None:
         )
     _transcription.validate_transcription_config()
     _session_lock_shared()  # fail loudly at startup on a bad toggle
+    _oauth.validate_config()
     asyncio.run(_main())
 
 

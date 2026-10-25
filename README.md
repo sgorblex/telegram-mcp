@@ -1,3 +1,9 @@
+> **Fork (sgorblex/telegram-mcp).** Adds OAuth to the streamable HTTP transport so the
+> server can be a remote connector (e.g. claude.ai): `TELEGRAM_MCP_AUTH=oidc` mounts the app
+> behind fastmcp's `OIDCProxy` (`telegram_mcp/transport/oauth.py`). Also `telegram-mcp-login`
+> (log in to a file session directly), a `Containerfile` for that setup, and Woodpecker
+> pipelines. Everything else is upstream, merged by tag; releases are `v<upstream>-oauth.<n>`.
+
 <div align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=200&section=header&text=Telegram%20MCP%20Server&fontSize=50&fontAlignY=35&animation=fadeIn&fontColor=FFFFFF&descAlignY=55&descAlign=62" alt="Telegram MCP Server" width="100%" />
 </div>

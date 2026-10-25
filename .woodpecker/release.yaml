@@ -1,0 +1,45 @@
+labels:
+  platform: linux/arm64
+
+# A `v*` tag builds the image, pushes :<version> and :production to Zot, and deploys.
+# Needs the repo marked "trusted" on the Woodpecker server (docker socket volume).
+when:
+  - event: tag
+    ref: refs/tags/v*
+
+steps:
+  - name: build-push
+    image: docker:29-cli@sha256:1a4c7cb63513f349bdad01fcc6e0f3f2f67d37b9da86f14dc0d4a0942eecda00
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TG_REGISTRY:
+        from_secret: tg_registry
+      TG_REGISTRY_USER:
+        from_secret: tg_registry_user
+      TG_REGISTRY_PASSWORD:
+        from_secret: tg_registry_password
+    commands:
+      - echo "$TG_REGISTRY_PASSWORD" | docker login "$TG_REGISTRY" -u "$TG_REGISTRY_USER" --password-stdin
+      # release-build.sh is bash; docker:29-cli ships busybox ash only.
+      - apk add --no-cache bash
+      - scripts/release-build.sh
+
+  - name: deploy
+    image: alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+    environment:
+      TG_DEPLOY_HOST:
+        from_secret: tg_deploy_host
+      TG_DEPLOY_SSH_KEY:
+        from_secret: tg_deploy_ssh_key
+      TG_DEPLOY_KNOWN_HOSTS:
+        from_secret: tg_deploy_known_hosts
+      TG_REGISTRY:
+        from_secret: tg_registry
+      TG_REGISTRY_USER:
+        from_secret: tg_registry_user
+      TG_REGISTRY_PASSWORD:
+        from_secret: tg_registry_password
+    commands:
+      - apk add --no-cache bash openssh-client
+      - scripts/ssh-deploy.sh
