@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the image and push :<version> and :production. Called by .woodpecker/release.yaml
+# Build the image and push :<version>. Called by .woodpecker/release.yaml
 # (a script, not inline: Woodpecker substitutes ${...} in pipeline files itself).
 set -euo pipefail
 
@@ -14,6 +14,5 @@ image="$TG_REGISTRY/telegram/mcp"
 docker build --load -f Containerfile \
   --label org.opencontainers.image.version="$version" \
   --label org.opencontainers.image.revision="$revision" \
-  -t "$image:$version" -t "$image:production" .
+  -t "$image:$version" .
 docker push "$image:$version"
-docker push "$image:production"
