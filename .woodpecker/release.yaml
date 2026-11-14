@@ -3,25 +3,42 @@ labels:
 
 # A `v*` tag builds the image and pushes :<version> to Zot. Nothing is deployed from here: Renovate
 # proposes the new version in the server's config repo (oci-server-conf), and merging it deploys.
-# Needs the repo marked "trusted" on the Woodpecker server (docker socket volume).
+# No repo trust needed: the build runs in plugin-docker-buildx, which the Woodpecker server allows to
+# run privileged at exactly this tag@digest (WOODPECKER_PLUGINS_PRIVILEGED); bump the image there first.
+# A manual run builds the same image(s) without pushing, to test the pipeline itself.
 when:
   - event: tag
     ref: refs/tags/v*
+  - event: manual
 
 steps:
   - name: build-push
-    image: docker:29-cli@sha256:1a4c7cb63513f349bdad01fcc6e0f3f2f67d37b9da86f14dc0d4a0942eecda00
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      TG_REGISTRY:
-        from_secret: tg_registry
-      TG_REGISTRY_USER:
+    image: docker.io/woodpeckerci/plugin-docker-buildx:6.1.2@sha256:d26b69cbe748b8a219c707e7889d5ffb3f9214bc3c480c30fe857ff85954267c
+    when:
+      - event: tag
+    settings: &build_push
+      registry: reg.aclerici.me
+      username:
         from_secret: tg_registry_user
-      TG_REGISTRY_PASSWORD:
+      password:
         from_secret: tg_registry_password
-    commands:
-      - echo "$TG_REGISTRY_PASSWORD" | docker login "$TG_REGISTRY" -u "$TG_REGISTRY_USER" --password-stdin
-      # release-build.sh is bash; docker:29-cli ships busybox ash only.
-      - apk add --no-cache bash
-      - scripts/release-build.sh
+      repo: reg.aclerici.me/telegram/mcp
+      tags: ${CI_COMMIT_TAG##v}
+      dockerfile: Containerfile
+      context: .
+      platforms: linux/arm64
+      # The plugin adds created, revision, source and url itself.
+      labels:
+        - org.opencontainers.image.version=${CI_COMMIT_TAG##v}
+      # A list setting, so its comma is escaped; cache_to is a plain string.
+      cache_from: 'type=registry\,ref=reg.aclerici.me/telegram/mcp:buildcache'
+      cache_to: type=registry,ref=reg.aclerici.me/telegram/mcp:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+
+  - name: build-push-test
+    image: docker.io/woodpeckerci/plugin-docker-buildx:6.1.2@sha256:d26b69cbe748b8a219c707e7889d5ffb3f9214bc3c480c30fe857ff85954267c
+    when:
+      - event: manual
+    settings:
+      <<: *build_push
+      tags: ci-test
+      dry_run: true
