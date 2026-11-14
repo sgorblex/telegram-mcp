@@ -4,7 +4,8 @@ labels:
 # A `v*` tag builds the image and pushes :<version> to Zot. Nothing is deployed from here: Renovate
 # proposes the new version in the server's config repo (oci-server-conf), and merging it deploys.
 # No repo trust needed: the build runs in plugin-docker-buildx, which the Woodpecker server allows to
-# run privileged at exactly this tag@digest (WOODPECKER_PLUGINS_PRIVILEGED); bump the image there first.
+# run privileged by name, at any version (WOODPECKER_PLUGINS_PRIVILEGED), so the pin can be bumped
+# here without touching the server.
 # A manual run builds the same image(s) without pushing, to test the pipeline itself.
 when:
   - event: tag
